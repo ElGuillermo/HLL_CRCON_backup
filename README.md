@@ -7,11 +7,12 @@ That will generate a compressed file containing the whole `hll_rcon_tool` folder
 The file will be stored in `hll_rcon_tool` parent folder.
 
 What it does :  
-- stop CRCON
-- make a backup of it
-- rebuild CRCON
-- restart CRCON
+- stop CRCON  
+- make a backup of it  
+- rebuild CRCON  
+- restart CRCON  
 - delete obsoleted Docker containers and images
+- report disk usage of various CRCON components
 
 ## Install
 - Copy `backup.sh` in CRCON's root (`/root/hll_rcon_tool/`)
