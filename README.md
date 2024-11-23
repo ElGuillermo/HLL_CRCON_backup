@@ -23,4 +23,4 @@ What it does :
 ## Use
 - Get into CRCON's root (`/root/hll_rcon_tool/`) and launch the script `sudo sh ./backup.sh`
 
-The file should then be uploaded on any distant machine to keep it secure in case of a CRCON host machine catastrophic failure.
+The backup file should then be uploaded on any distant machine to keep it secure in case of a CRCON host machine catastrophic failure.
