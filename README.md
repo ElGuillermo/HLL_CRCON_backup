@@ -26,7 +26,7 @@ What it does :
 > If so, you'll have to adapt the commands below accordingly.
 
 ## Install
-Download the `backup.sh` file in CRCON's folder using these commands :
+- Log into your CRCON host machine using SSH and enter these commands (one line at at time) :
 ```shell
 cd /root/hll_rcon_tool
 wget https://raw.githubusercontent.com/ElGuillermo/HLL_CRCON_backup/refs/heads/main/backup.sh
