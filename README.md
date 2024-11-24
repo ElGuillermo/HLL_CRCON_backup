@@ -33,7 +33,7 @@ wget https://raw.githubusercontent.com/ElGuillermo/HLL_CRCON_backup/refs/heads/m
 ```
 
 ## Config
-- Edit `backup.sh` and set the parameters to fit your needs.
+- Edit `/root/hll_rcon_tool/backup.sh` and set the parameters to fit your needs.
 
 ## Use
 - Get into CRCON's folder and launch the script using these commands :
