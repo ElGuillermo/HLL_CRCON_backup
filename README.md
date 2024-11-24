@@ -8,13 +8,13 @@ The file will be stored in `hll_rcon_tool` parent folder.
 
 What it does :  
 - stop CRCON  
-- (optional) delete logs  
+- `(optional)` delete logs  
 - create a compressed backup  
-- (optional) rebuild CRCON  
+- `(optional)` rebuild CRCON  
 - restart CRCON  
-- (optional) delete obsoleted Docker containers and images  
-- (optional) upload the compressed backup file to anoter machine  
-- (optional) delete the localcompressed backup file  
+- `(optional)` delete obsoleted Docker containers and images  
+- `(optional)` upload the compressed backup file to anoter machine  
+- `(optional)` delete the local compressed backup file  
 - report disk usage of various CRCON components
 
 ## Install
