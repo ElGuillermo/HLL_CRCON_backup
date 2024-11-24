@@ -14,7 +14,7 @@ What it does :
 - restart CRCON  
 - `(optional)` delete obsoleted Docker containers and images  
 - `(optional)` upload the compressed backup file to anoter machine  
-- `(optional)` delete the local compressed backup file  
+  - `(optional)` delete the local compressed backup file  
 - report disk usage of various CRCON components
 
 ## Install
