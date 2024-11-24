@@ -20,6 +20,12 @@ What it does :
 ## Install
 - Copy `backup.sh` in CRCON's folder (`/root/hll_rcon_tool/`)
 
+You can download the the file from your CRCON host machine using these commands :
+```shell
+cd /root/hll_rcon_tool
+wget https://raw.githubusercontent.com/ElGuillermo/HLL_CRCON_backup/refs/heads/main/backup.sh
+```
+
 ## Config
 - Edit `backup.sh` and edit the "configuration" part
 
