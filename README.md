@@ -4,7 +4,7 @@
 Stand alone tool to backup an Hell Let Loose (HLL) CRCON (see : https://github.com/MarechJ/hll_rcon_tool) install.
 
 That will generate a compressed file containing the whole `hll_rcon_tool` folder.  
-The file will be stored in `hll_rcon_tool` parent folder.
+You then can choose to upload the file to another machine and/or keep it in `hll_rcon_tool` parent folder.
 
 What it does :  
 - stop CRCON  
