@@ -18,7 +18,7 @@ What it does :
 - report disk usage of various CRCON components
 
 ## Install
-- Copy `backup.sh` in CRCON's root (`/root/hll_rcon_tool/`)
+- Copy `backup.sh` in CRCON's folder (`/root/hll_rcon_tool/`)
 
 ## Config
 - Edit `backup.sh` and edit the "configuration" part
