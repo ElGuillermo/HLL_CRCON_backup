@@ -192,7 +192,7 @@ else
   printf "\n\n"
 
   echo "┌──────────────────────────────────────┐"
-  echo "│ CRCON storage occupation             │"
+  echo "│ CRCON storage                        │"
   echo "└──────────────────────────────────────┘"
   { printf "Database         : "; du -sh "$crcon_dir"/db_data | tr -d '\n'; }
   { printf "\nRedis cache      : "; du -sh "$crcon_dir"/redis_data | tr -d '\n'; }
