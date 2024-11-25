@@ -15,6 +15,8 @@ What it does :
   - `(optional)` delete the local compressed backup file  
 - report disk usage of various CRCON components
 
+## Install
+
 > [!NOTE]
 > The shell commands given below assume your CRCON is installed in `/root/hll_rcon_tool`.  
 > You may have installed your CRCON in a different folder.  
@@ -25,7 +27,6 @@ What it does :
 >   
 > If so, you'll have to adapt the commands below accordingly.
 
-## Install
 - Log into your CRCON host machine using SSH and enter these commands (one line at at time) :
 ```shell
 cd /root/hll_rcon_tool
