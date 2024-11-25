@@ -15,8 +15,9 @@ CRCON_folder_path="/root/hll_rcon_tool"
 delete_logs="no"
 
 # Set to "yes" if you have modified any file that comes from CRCON repository
-# Default : "no"
-rebuild_before_restart="no"
+# (Won't hurt anything if you're running vanilla CRCRON)
+# Default : "yes"
+rebuild_before_restart="yes"
 
 # Delete the obsolete Docker images, containers and build cache
 # Default : "no"
