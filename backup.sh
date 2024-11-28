@@ -15,21 +15,20 @@ CRCON_folder_path="/root/hll_rcon_tool"
 delete_logs="no"
 
 # Set to "yes" if you have modified any file that comes from CRCON repository
-# (Won't hurt anything if you're running vanilla CRCRON)
-# Default : "yes"
+# Default : "no"
 rebuild_before_restart="yes"
 
 # Delete the obsolete Docker images, containers and build cache
-# Default : "no"
+# Default : "yes"
 clean_docker_stuff="no"
 
 # Upload the compressed backup file to another machine
-sftp_host=  # Distant machine's IP (ie : sftp_host=123.123.123.123). No value : disable
+sftp_host=  # no value = disable
 sftp_port=22  # Default : 22
 sftp_dest="/root"
 sftp_user="root"
-delete_after_upload="no"  # Default : "no"
-delete_after_upload_dontconfirm="no"  # Should we always consider the upload successful ?
+delete_after_upload="yes"
+delete_after_upload_dontconfirm="yes"  # Should we always consider the upload successful ?
 #
 # └───────────────────────────────────────────────────────────────────────────┘
 
@@ -63,7 +62,7 @@ if [ ! "$current_dir" = "$crcon_dir" ]; then
     if [ "$this_script_dir" = "$crcon_dir" ]; then
       printf "\033[32mV\033[0m This script is located in the CRCON folder\n"
       # There is a compose.yaml file in the CRCON folder
-      if [ -f "$crcon_dir/compose.yaml" ]; then
+      if [ -f "$crcon_dir/compose.yaml" ] && [ -f "$crcon_dir/.env" ]; then
         printf "\033[32mV\033[0m The CRCON seems to be configured\n\n"
       # No compose.yaml file could be found in the CRCON folder
       else
@@ -155,7 +154,7 @@ else
     echo "│ Uploading backup to another machine  │"
     echo "└──────────────────────────────────────┘"
     # All SFTP parameters are present
-    if [ -n "$sftp_port" -a -n "$sftp_user" -a -n "$sftp_dest" ]; then
+    if [ -n "$sftp_port" ] && [ -n "$sftp_user" ] && [ -n "$sftp_dest" ]; then
       echo "Enter your '$sftp_user@$sftp_host' password"
       scp -P $sftp_port "$current_dir_parent/$backup_name" $sftp_user@$sftp_host:$sftp_dest
       # local backup should be deleted
@@ -193,7 +192,7 @@ else
   printf "\n\n"
 
   echo "┌──────────────────────────────────────┐"
-  echo "│ CRCON storage                        │"
+  echo "│ CRCON storage occupation             │"
   echo "└──────────────────────────────────────┘"
   { printf "Database         : "; du -sh "$crcon_dir"/db_data | tr -d '\n'; }
   { printf "\nRedis cache      : "; du -sh "$crcon_dir"/redis_data | tr -d '\n'; }
