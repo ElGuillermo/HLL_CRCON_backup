@@ -82,7 +82,7 @@ else
     printf "  your \033[33mhll_rcon_tool\033[0m folder should be found here :\n"
     printf "    - \033[33m/root/hll_rcon_tool\033[0m        (most Linux installs)\n"
     printf "    - \033[33m/home/ubuntu/hll_rcon_tool\033[0m (some Ubuntu installs)\n\n"
-    printf "\033[32mWhat to do\033[0m :\nFind your CRCON folder, copy this script in it and relaunch it from there.\n\n"
+    printf "\033[32mWhat to do\033[0m : Find your CRCON folder, copy this script in it and relaunch it from there.\n\n"
     exit
   fi
 fi
