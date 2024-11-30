@@ -8,7 +8,7 @@
 #   any "hll_rcon_tool" folder on disk.
 # - If your CRCON folder name isn't 'hll_rcon_tool', you must set it here.
 # - Some Ubuntu distros disable 'root' user,
-#   you may have installed CRCON in "/home/ubuntu/hll_rcon_tool" then.
+#   your CRCON could then be found in "/home/ubuntu/hll_rcon_tool".
 # default : "/root/hll_rcon_tool"
 CRCON_folder_path="/root/hll_rcon_tool"
 
@@ -40,11 +40,11 @@ sftp_port=22  # Default : 22
 sftp_dest="/root"
 sftp_user="root"
 delete_after_upload="yes"
-delete_after_upload_dontconfirm="no"  # Should we always consider the upload successful ?
+delete_after_upload_dontconfirm="yes"  # Should we always consider the upload successful ?
 
 # Storage informations
 # Default : "no"
-storage_info="no"
+storage_info="yes"
 #
 # └───────────────────────────────────────────────────────────────────────────┘
 
@@ -82,7 +82,7 @@ else
     printf "  your \033[33mhll_rcon_tool\033[0m folder should be found here :\n"
     printf "    - \033[33m/root/hll_rcon_tool\033[0m        (most Linux installs)\n"
     printf "    - \033[33m/home/ubuntu/hll_rcon_tool\033[0m (some Ubuntu installs)\n\n"
-    printf "\033[32mWhat to do\033[0m : Find your CRCON folder, copy this script in it and relaunch it from there.\n\n"
+    printf "\033[32mWhat to do\033[0m :Find your CRCON folder, copy this script in it and relaunch it from there.\n\n"
     exit
   fi
 fi
@@ -184,7 +184,7 @@ if [ $delete_logs = "yes" ]; then
   rm -r "$crcon_dir"/logs/*.*
   # rm -r "$crcon_dir"/logs/old/*.*
   echo "└──────────────────────────────────────┘"
-  printf "Delete logs : \033[32mdone\033[0m.\n"
+  printf "Delete logs : \033[32mdone\033[0m.\n\n"
 fi
 
 echo "┌──────────────────────────────────────┐"
@@ -211,39 +211,38 @@ if [ -n "$sftp_host" ]; then
   echo "┌──────────────────────────────────────┐"
   echo "│ Uploading backup to another machine  │"
   echo "└──────────────────────────────────────┘"
-  # All SFTP parameters are present
   if [ -n "$sftp_port" ] && [ -n "$sftp_user" ] && [ -n "$sftp_dest" ]; then
-    echo "Enter your '$sftp_user@$sftp_host' password"
+    printf "\033[35m┌──────────────────────────────────────┐\033[0m\n"
+    printf "\033[35m│ Enter your dest. host SSH password   │\033[0m\n"
+    printf "\033[35m└──────────────────────────────────────┘\033[0m\n"
     scp -P $sftp_port "$current_dir_parent/$backup_name" $sftp_user@$sftp_host:$sftp_dest
-    # local backup should be deleted
     if [ $delete_after_upload = "yes" ]; then
-      # No need to confirm
       if [ $delete_after_upload_dontconfirm = "yes" ]; then
         rm "$current_dir_parent/$backup_name"
-        local_deleted="yes"
-      # Confirmation is required
       else
         echo "You asked the local backup to be deleted"
         printf "This file size is %s\n\n" "$backup_file_size"
-        read -p "Was the upload successful ? (yes/no) " yn
+        read -p "Do you confirm the upload was successful ? (yes/no) " yn
         case $yn in
-          [Yy]* ) echo "Deleting..."; rm "$current_dir_parent/$backup_name"; local_deleted="yes";;
-          [Nn]* ) echo "Local backup will not be deleted"; local_deleted="no";;
+          [Yy]* ) echo "Deleting..."; rm "$current_dir_parent/$backup_name";;
+          [Nn]* ) echo "Local backup will not be deleted";;
           * ) echo "Invalid input. Please answer yes or no.";;
         esac
       fi
-    # local backup should not be deleted
+      if [ -f "$current_dir_parent/$backup_name" ]; then
+        local_deleted="no"
+      else
+        local_deleted="yes"
+      fi
     else
       local_deleted="no"
     fi
-  # One or more SFTP parameters is missing
   else
-    printf "\033[31mError\033[0m :\n  Invalid SFTP configuration\n"
+    printf "\033[31mX\033[0m Invalid SFTP configuration\n"
     printf "\033[31mX\033[0m Local backup can't be uploaded\n"
     printf "\033[32mV\033[0m Local backup will not be deleted"
     local_deleted="no"
   fi
-# SFTP transfer isn't configured
 else
   local_deleted="no"
 fi
@@ -271,16 +270,21 @@ if [ $storage_info = "yes" ]; then
   { printf "\n └ Redis cache       : "; du -sh "$crcon_dir"/redis_data | tr -d '\n'; }
   printf "\n└──────────────────────────────────────┘\n\n"
 fi
-printf "\n\n"
 
 printf "┌──────────────────────────────────────┐\n"
 printf "│ \033[32mBackup done\033[0m                          │\n"
 printf "└──────────────────────────────────────┘\n"
-if [ "$local_deleted" = "yes" ]; then
-  printf "Your compressed backup file has been uploaded on\n"
+if [ -n "$sftp_host" ]; then
+  printf "Compressed backup file has been uploaded on\n"
   printf "\033[33m%s\033[0m, as \033[33m%s/\033[0m%s\n" "$sftp_host" "$sftp_dest" "$backup_name"
   printf "This file size is %s\n\n" "$backup_file_size"
-  printf "The local backup file has been deleted\n\n"
+  if [ "$local_deleted" = "yes" ]; then
+    printf "The local backup file has been deleted\n\n"
+  else
+    printf "Your compressed backup file has been saved here :\n"
+    printf "\033[33m%s\033[0m\n" "$current_dir_parent/$backup_name"
+    printf "This file size is %s\n\n" "$backup_file_size"
+  fi
 else
   printf "Your compressed backup file has been saved here :\n"
   printf "\033[33m%s\033[0m\n" "$current_dir_parent/$backup_name"
