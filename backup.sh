@@ -12,61 +12,58 @@
 # default : "/root/hll_rcon_tool"
 CRCON_folder_path=""
 
-# Set to "yes" if you have modified any file that comes from CRCON repository
-# First build will take ~3-4 minutes. Subsequent ones will take ~30 seconds.
-# Default : "yes"
-rebuild_before_restart="yes"
-
-# Redis cache flush
-# You should NOT enable this one until asked to do so !
-# That will force CRCON to reread ~5 min of previous logs from the game server
-# and resend past automod/votemap/admin/etc messages, punishes and kicks
-# Default : "no"
-redis_cache_flush="no"
-
-# Delete logs after backup
-# Default : "no"
-delete_logs="no"
-
-# Delete the obsolete Docker images, containers and build cache
-# Pros : that will free a *lot* (several GBs) of disk space
-# Cons : build procedure will be *minutes* longer
-# Default : "no"
-clean_docker_stuff="no"
-
 # Upload the compressed backup file to another machine
-sftp_host=  # no value = disable
-sftp_port=22  # Default : 22
-sftp_dest="/root"
+sftp_host=94.130.133.61  # no value = disable
+sftp_port=22345  # Default : 22
+sftp_dest="/var/www/html/prive"
 sftp_user="root"
 delete_after_upload="no"  # set to "yes" if you do not want a local backup
 delete_after_upload_dontconfirm="no"  # Should we always consider the upload successful ?
-
-# Storage informations
-# Default : "no"
-storage_info="yes"
 #
 # └───────────────────────────────────────────────────────────────────────────┘
 
 is_CRCON_configured() {
   printf "%s└ \033[34m?\033[0m Testing folder : \033[33m%s\033[0m\n" "$2" "$1"
   if [ -f "$1/compose.yaml" ] && [ -f "$1/.env" ]; then
-    printf "%s  └ \033[32mV\033[0m A valid CRCON install has been found in \033[33m%s\033[0m\n" "$2" "$1"
+    printf "%s  └ \033[32mV\033[0m A configured CRCON install has been found in \033[33m%s\033[0m\n" "$2" "$1"
   else
+    missing_env=0
+    missing_compose=0
+    wrong_compose_name=0
+    deprecated_compose=0
     if [ ! -f "$1/.env" ]; then
+      missing_env=1
       printf "%s  └ \033[31mX\033[0m Missing file : '\033[37m.env\033[0m'\n" "$2"
-      printf "\n\033[32mWhat to do\033[0m :\nFollow the install procedure to create a '\033[37m.env\033[0m' file\n\n"
     fi
     if [ ! -f "$1/compose.yaml" ]; then
+      missing_compose=1
       printf "%s  └ \033[31mX\033[0m Missing file : '\033[37mcompose.yaml\033[0m'\n" "$2"
       if [ -f "$1/compose.yml" ]; then
-        printf "%s  └ \033[31m!\033[0m Deprecated file found : '\033[37mcompose.yml\033[0m'\n" "$2"
+        wrong_compose_name=1
+        printf "%s    └ \033[31m!\033[0m Wrongly named file found : '\033[37mcompose.yml\033[0m'\n" "$2"
       fi
       if [ -f "$1/docker-compose.yml" ]; then
-        printf "%s  └ \033[31m!\033[0m Deprecated file found : '\033[37mdocker-compose.yml\033[0m'\n" "$2"
+        deprecated_compose=1
+        printf "%s    └ \033[31m!\033[0m Deprecated file found : '\033[37mdocker-compose.yml\033[0m'\n" "$2"
       fi
-      printf "\n\033[32mWhat to do\033[0m :\nFollow the install procedure to create a '\033[37mcompose.yaml\033[0m' file\n\n"
     fi
+    printf "\n\033[32mWhat to do\033[0m :\n"
+    if [ $missing_env = 1 ]; then
+      printf "\n - Follow the install procedure to create a '\033[37m.env\033[0m' file\n"
+    fi
+    if [ $missing_compose = 1 ]; then
+      printf "\n - Follow the install procedure to create a '\033[37mcompose.yaml\033[0m' file\n"
+      if [ $wrong_compose_name = 1 ]; then
+        printf "\n   If your CRCON starts normally using '\033[37mcompose.yml\033[0m'\n"
+        printf "   you should rename this file using this command :\n"
+        printf "   \033[36mmv %s/compose.yml %s/compose.yaml\033[0m\n" "$1" "$1"
+      fi
+      if [ $deprecated_compose = 1 ]; then
+        printf "\n   '\033[37mdocker-compose.yml\033[0m' was used by the deprecated (jul. 2023) 'docker-compose' command\n"
+        printf "   You should delete it and use a '\033[37mcompose.yaml\033[0m' file\n"
+      fi
+    fi
+    printf "\n"
     exit
   fi
 }
@@ -85,7 +82,6 @@ if [ "$(id -u)" -ne 0 ]; then
   printf "\033[32mWhat to do\033[0m : you must elevate your permissions using 'sudo' :\n"
   printf "\033[36msudo sh ./%s\033[0m\n\n" "$this_script_name"
   exit
-# Root
 else
   printf "\033[32mV\033[0m You have 'root' permissions.\n"
 fi
@@ -151,17 +147,6 @@ docker compose down
 echo "└──────────────────────────────────────┘"
 printf "Stop CRCON : \033[32mdone\033[0m.\n\n"
 
-if [ $redis_cache_flush = "yes" ]; then
-  echo "┌──────────────────────────────────────┐"
-  echo "│ Redis cache flush                    │"
-  echo "└──────────────────────────────────────┘"
-  docker compose up -d redis
-  docker compose exec redis redis-cli flushall
-  docker compose down
-  echo "└──────────────────────────────────────┘"
-  printf "Redis cache flush : \033[32mdone\033[0m.\n\n"
-fi
-
 echo "┌──────────────────────────────────────┐"
 echo "│ Backup CRCON                         │"
 echo "└──────────────────────────────────────┘"
@@ -175,25 +160,6 @@ backup_file_size=$(numfmt --to=iec --format "%.2f" $(stat --printf="%s" "$curren
 echo "└──────────────────────────────────────┘"
 printf "Backup CRCON : \033[32mdone\033[0m.\n\n"
 
-if [ $delete_logs = "yes" ]; then
-  echo "┌──────────────────────────────────────┐"
-  echo "│ Delete logs                          │"
-  echo "└──────────────────────────────────────┘"
-  rm -r "$crcon_dir"/logs/*.*
-  # rm -r "$crcon_dir"/logs/old/*.*
-  echo "└──────────────────────────────────────┘"
-  printf "Delete logs : \033[32mdone\033[0m.\n\n"
-fi
-
-if [ $rebuild_before_restart = "yes" ]; then
-  echo "┌──────────────────────────────────────┐"
-  echo "│ Build CRCON                          │"
-  echo "└──────────────────────────────────────┘"
-  docker compose build
-  echo "└──────────────────────────────────────┘"
-  printf "Build CRCON : \033[32mdone\033[0m.\n\n"
-fi
-
 echo "┌──────────────────────────────────────┐"
 echo "│ Restart CRCON                        │"
 echo "└──────────────────────────────────────┘"
@@ -201,18 +167,6 @@ docker compose up -d --remove-orphans
 echo "└──────────────────────────────────────┘"
 printf "Restart CRCON : \033[32mdone\033[0m.\n\n"
   
-if [ $clean_docker_stuff = "yes" ]; then
-  echo "┌──────────────────────────────────────┐"
-  echo "│ Clean Docker stuff                   │"
-  echo "└──────────────────────────────────────┘"
-  docker system prune -a -f
-  # docker builder prune --all
-  # docker buildx prune --all
-  docker volume rm $(docker volume ls -qf dangling=true)
-  echo "└──────────────────────────────────────┘"
-  printf "Clean Docker stuff : \033[32mdone\033[0m.\n\n"
-fi
-
 if [ -n "$sftp_host" ]; then
   echo "┌──────────────────────────────────────┐"
   echo "│ Uploading backup to another machine  │"
@@ -253,30 +207,6 @@ else
   local_deleted="no"
 fi
 printf "\n\n"
-
-if [ $storage_info = "yes" ]; then
-  echo "┌──────────────────────────────────────┐"
-  echo "│ CRCON storage information            │"
-  echo "└──────────────────────────────────────┘"
-  { printf "CRCON total size     : "; du -sh "$crcon_dir" | tr -d '\n'; }
-  printf "\n────────────────────────────────────────"
-  { printf "\n └ Database          : "; du -sh "$crcon_dir"/db_data | tr -d '\n'; }
-  # db_command="docker exec -it hll_rcon_tool-postgres-1 psql -U rcon -d rcon -t -A -c "
-  db_command="docker compose exec -it postgres psql -U rcon -d rcon -t -A -c "
-  db_table_size="SELECT pg_size_pretty(pg_total_relation_size('public."
-  db_rows_count="SELECT COUNT(*) FROM public."
-  { printf "\n   └ audit_log       : "; ($db_command "$db_table_size""audit_log'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""audit_log";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf "   └ log_lines       : "; ($db_command "$db_table_size""log_lines'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""log_lines";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf "   └ player_names    : "; ($db_command "$db_table_size""player_names'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""player_names";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf "   └ player_sessions : "; ($db_command "$db_table_size""player_sessions'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""player_sessions";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf "   └ player_stats    : "; ($db_command "$db_table_size""player_stats'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""player_stats";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf "   └ players_actions : "; ($db_command "$db_table_size""players_actions'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""players_actions";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf "   └ steam_id_64     : "; ($db_command "$db_table_size""steam_id_64'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""steam_id_64";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf "   └ steam_info      : "; ($db_command "$db_table_size""steam_info'));") | tr -d ' \t\r\n'; printf "\t("; ($db_command "$db_rows_count""steam_info";) | tr -d ' \t\r\n'; printf " rows)\n"; }
-  { printf " └ Logs              : "; du -sh "$crcon_dir"/logs | tr -d '\n'; }
-  { printf "\n └ Redis cache       : "; du -sh "$crcon_dir"/redis_data | tr -d '\n'; }
-  printf "\n└──────────────────────────────────────┘\n\n"
-fi
 
 printf "┌──────────────────────────────────────┐\n"
 printf "│ \033[32mBackup done\033[0m                          │\n"
