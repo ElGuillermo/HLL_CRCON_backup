@@ -5,7 +5,7 @@
 #
 # The complete path of the CRCON folder
 # - If not set (ie : CRCON_folder_path=""), it will try to find and use
-#   any "hll_rcon_tool" folder on disk.
+#   any "hll_rcon_tool" folder on disk, then, if not found, the current folder
 # - If your CRCON folder name isn't 'hll_rcon_tool', you must set it here.
 # - Some Ubuntu distros disable 'root' user,
 #   you may have installed CRCON in "/home/ubuntu/hll_rcon_tool" then.
