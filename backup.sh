@@ -13,10 +13,11 @@
 CRCON_folder_path=""
 
 # Upload the compressed backup file to another machine
-sftp_host=  # no value = disable
-sftp_port=22  # Default : 22
-sftp_dest="/root"
-sftp_user="root"
+upload_backup="no"
+sftp_host=123.123.123.123  # Your distant host IP
+sftp_port=22  # Distant host SSH/SFTP port. Default : 22
+sftp_dest="/root"  # Default : "/root"
+sftp_user="root"  # Default : "root"
 delete_after_upload="no"  # set to "yes" if you do not want a local backup
 delete_after_upload_dontconfirm="no"  # Should we always consider the upload successful ?
 #
@@ -155,7 +156,7 @@ cd ..
 current_dir_parent=$(pwd | tr -d '\n')
 backup_name="hll_rcon_tool_$(date '+%Y-%m-%d_%Hh%M').tar.gz"
 tar -zcf "$backup_name" "$current_dir"
-cd "$current_dir" || exit
+cd "$current_dir"
 backup_file_size=$(numfmt --to=iec --format "%.2f" $(stat --printf="%s" "$current_dir_parent/$backup_name"))
 echo "└──────────────────────────────────────┘"
 printf "Backup CRCON : \033[32mdone\033[0m.\n\n"
@@ -167,15 +168,17 @@ docker compose up -d --remove-orphans
 echo "└──────────────────────────────────────┘"
 printf "Restart CRCON : \033[32mdone\033[0m.\n\n"
   
-if [ -n "$sftp_host" ]; then
+if [ "$upload_backup" = "yes" ]; then
   echo "┌──────────────────────────────────────┐"
   echo "│ Uploading backup to another machine  │"
   echo "└──────────────────────────────────────┘"
+  upload_successfull="no"
   if [ -n "$sftp_port" ] && [ -n "$sftp_user" ] && [ -n "$sftp_dest" ]; then
     printf "\033[35m┌──────────────────────────────────────┐\033[0m\n"
     printf "\033[35m│ Enter your dest. host SSH password   │\033[0m\n"
     printf "\033[35m└──────────────────────────────────────┘\033[0m\n"
     scp -P $sftp_port "$current_dir_parent/$backup_name" $sftp_user@$sftp_host:$sftp_dest
+    upload_successfull="yes"
     if [ $delete_after_upload = "yes" ]; then
       if [ $delete_after_upload_dontconfirm = "yes" ]; then
         rm "$current_dir_parent/$backup_name"
@@ -198,6 +201,7 @@ if [ -n "$sftp_host" ]; then
       local_deleted="no"
     fi
   else
+    upload_successfull="no"
     printf "\033[31mX\033[0m Invalid SFTP configuration\n"
     printf "\033[31mX\033[0m Local backup can't be uploaded\n"
     printf "\033[32mV\033[0m Local backup will not be deleted"
@@ -211,19 +215,22 @@ printf "\n\n"
 printf "┌──────────────────────────────────────┐\n"
 printf "│ \033[32mBackup done\033[0m                          │\n"
 printf "└──────────────────────────────────────┘\n"
-if [ -n "$sftp_host" ]; then
-  printf "Your compressed backup file has been uploaded on\n"
-  printf "\033[33m%s\033[0m, as \033[33m%s/\033[0m%s\n" "$sftp_host" "$sftp_dest" "$backup_name"
-  printf "This file size is %s\n\n" "$backup_file_size"
-  if [ "$local_deleted" = "yes" ]; then
-    printf "The local backup file has been deleted\n\n"
-  else
-    printf "Your compressed backup file has been saved here :\n"
-    printf "\033[33m%s\033[0m\n" "$current_dir_parent/$backup_name"
+if [ "$upload_backup" = "yes" ]; then
+  if [ "$upload_successfull" = "yes" ]; then
+    printf "Your backup file has been uploaded on\n"
+    printf "\033[33m%s\033[0m, as \033[33m%s/\033[0m%s\n" "$sftp_host" "$sftp_dest" "$backup_name"
     printf "This file size is %s\n\n" "$backup_file_size"
-  fi
+    if [ "$local_deleted" = "yes" ]; then
+      printf "The local backup file has been deleted\n\n"
+    else
+      printf "Your backup file has been saved here :\n"
+      printf "\033[33m%s\033[0m\n" "$current_dir_parent/$backup_name"
+      printf "This file size is %s\n\n" "$backup_file_size"
+    fi
+  else
+    printf "\033[31mX\033[0m Your backup file couldn't be uploaded\n\n"
 else
-  printf "Your compressed backup file has been saved here :\n"
+  printf "Your backup file has been saved here :\n"
   printf "\033[33m%s\033[0m\n" "$current_dir_parent/$backup_name"
   printf "This file size is %s\n\n" "$backup_file_size"
 fi
