@@ -71,7 +71,7 @@ is_CRCON_configured() {
 
 clear
 printf "┌─────────────────────────────────────────────────────────────────────────────┐\n"
-printf "│ CRCON restart                                                               │\n"
+printf "│ CRCON backup                                                                │\n"
 printf "└─────────────────────────────────────────────────────────────────────────────┘\n\n"
 
 this_script_dir=$(dirname -- "$( readlink -f -- "$0"; )";)
