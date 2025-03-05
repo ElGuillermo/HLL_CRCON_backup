@@ -28,10 +28,10 @@
 CRCON_folder_path=""
 
 # Upload the compressed backup file to another machine
-upload_backup="yes"
-sftp_host=94.130.133.61               # Distant host IP
-sftp_port=22345                       # Distant host SSH/SFTP port. Default : 22
-sftp_dest="/var/www/html/prive"       # Distant path. Default : "/root"
+upload_backup="no"
+sftp_host=123.123.123.123             # Distant host IP
+sftp_port=22                          # Distant host SSH/SFTP port. Default : 22
+sftp_dest="/root"                     # Distant path. Default : "/root"
 sftp_user="root"                      # Distant user. Default : "root"
 delete_after_upload="no"              # "yes" if you do NOT want to keep a local backup
 delete_after_upload_dontconfirm="no"  # Should we always consider the upload successful ?
