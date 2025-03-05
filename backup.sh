@@ -1,8 +1,22 @@
 #!/bin/bash
 # ┌───────────────────────────────────────────────────────────────────────────┐
+# │ CRCON backup                                                              │
+# └───────────────────────────────────────────────────────────────────────────┘
+# The script will :
+# - search for a valid CRCON configuration
+# - stop the CRCON containers
+# - make a compressed backup of the CRCON folder
+# - restart the CRCON containers
+# - (optional) upload the backup to a distant host
+# - (optional) delete the local backup if the upload was successful
+
+# Source: https://github.com/ElGuillermo/HLL_CRCON_backup
+# Feel free to use/modify/distribute, as long as you keep this note in your code
+
+# ┌───────────────────────────────────────────────────────────────────────────┐
 # │ Configuration                                                             │
 # └───────────────────────────────────────────────────────────────────────────┘
-#
+
 # The complete path of the CRCON folder
 # - If not set (ie : CRCON_folder_path=""), it will try to find and use
 #   any "hll_rcon_tool" folder on disk, then, if not found, the current folder
@@ -14,55 +28,52 @@
 CRCON_folder_path=""
 
 # Upload the compressed backup file to another machine
-upload_backup="no"
-sftp_host=123.123.123.123             # Distant host IP
-sftp_port=22                          # Distant host SSH/SFTP port. Default : 22
-sftp_dest="/root"                     # Distant path. Default : "/root"
+upload_backup="yes"
+sftp_host=94.130.133.61               # Distant host IP
+sftp_port=22345                       # Distant host SSH/SFTP port. Default : 22
+sftp_dest="/var/www/html/prive"       # Distant path. Default : "/root"
 sftp_user="root"                      # Distant user. Default : "root"
 delete_after_upload="no"              # "yes" if you do NOT want to keep a local backup
 delete_after_upload_dontconfirm="no"  # Should we always consider the upload successful ?
-#
+
 # └───────────────────────────────────────────────────────────────────────────┘
 
 # --- functions ---
 
-# Set $SUDO="" if user is root, ="sudo" if he have sudo privileges, otherwise the script exits
+# Set    : $SUDO="" if user is root
+#          $SUDO="sudo" if he have sudo privileges
+# Exit   : if user is not root and have no sudo privileges
 check_privileges() {
     printf "\033[36m?\033[0m Checking current user permissions...\n"
     SUDO=""
-
     if [[ "$(id -u)" -eq 0 ]]; then
         printf "└ \033[32mV\033[0m You are running this script as root.\n"
         return 0
     fi
     printf "└ \033[31mX\033[0m You are not running this script as root.\n"
-
     if ! command -v sudo &>/dev/null; then
         printf "  └ \033[31mX\033[0m The sudo command is not installed. Unable to check privileges.\n\n"
         printf "Sorry : we can't go further :/ Exiting...\n\n"
         exit 1
     fi
-
     if sudo -n true 2>/dev/null; then
         printf "  └ \033[32mV\033[0m User '$(whoami)' has sudo privileges.\n"
         SUDO="sudo"
         return 0
     fi
-
     if LANG=C sudo -l 2>/dev/null | grep -Ez '(ALL[[:space:]]*:[[:space:]]*ALL)[[:space:]]*ALL' >/dev/null; then
         printf "  └ \033[32mV\033[0m User '$(whoami)' has sudo privileges.\n"
         SUDO="sudo"
         return 0
     fi
-    # If neither check passes, deny access
     printf "  └ \033[31mX\033[0m User '$(whoami)' does NOT have sudo privileges.\n"
     printf "      Please log in as a user with sudo access.\n\n"
     printf "Sorry : we can't go further :/ Exiting...\n\n"
     exit 1
 }
 
-# No screen output.
-# Return the tested path if it's a valid CRCON configuration, an empty string otherwise
+# Input  : $1 (path to test)
+# Return : the tested path if it's a valid CRCON configuration, an empty string otherwise
 is_CRCON_configured() {
     if [ -f "$1/.env" ] && [ -f "$1/compose.yaml" ]; then
         echo "$1"
@@ -71,9 +82,12 @@ is_CRCON_configured() {
     fi
 }
 
-# Input : $CRCON_folder_path (path to the CRCON as set in configuration)
-# Set $CRCON_PATH (first valid CRCON path found, or an empty string if none)
-# Return 0 if a valid CRCON configuration is found, 1 otherwise
+# Input  : $CRCON_folder_path (path to the CRCON as set in configuration)
+#          $current_dir (current directory)
+# Set    : $CRCON_PATH (first valid CRCON path found, or an empty string if none)
+#          $crcon_parent_dir (parent directory of the CRCON folder)
+# Return : 0 if a valid CRCON configuration is found
+#          1 otherwise
 find_valid_CRCON() {
     printf "\033[36m?\033[0m Searching for a valid CRCON configuration...\n"
     paths=""
@@ -88,6 +102,9 @@ find_valid_CRCON() {
         if [ -n "$result" ]; then
             printf "└ \033[32mV\033[0m CRCON is configured at \033[33m$result\033[0m\n"
             CRCON_PATH="$result"
+            cd "$CRCON_PATH/.." || exit 1
+            crcon_parent_dir=$(pwd)
+            cd "$current_dir" || exit 1
             return 0
         fi
     done
@@ -96,9 +113,10 @@ find_valid_CRCON() {
     return 1
 }
 
-# Input : $CRCON_PATH (path to valid CRCON configuration)
-# Set $CRCON_stopped="yes" if no CRCON container is running, ="no" otherwise
-# Return 0 if containers are stopped, 1 otherwise
+# Input   : $CRCON_PATH (path to valid CRCON configuration)
+# Set     : $CRCON_stopped="yes" if no CRCON container is running, ="no" otherwise
+# Return  : 0 if containers are stopped
+#           1 otherwise
 stop_CRCON_containers() {
     CRCON_stopped="no"
     printf "\033[36m?\033[0m Stopping CRCON Docker container(s)...\n"
@@ -125,29 +143,31 @@ stop_CRCON_containers() {
     fi
 }
 
-# Input : $CRCON_PATH (path to valid CRCON configuration)
-#       : $CRCON_stopped (set to "yes" if no CRCON container is running)
-# Set $backup_path to the path of the backup file
-# Set $backup_successful="yes" if backup is successful, ="no" otherwise
-# Set $backup_file_size to the size of the backup file
-# Return 0 if backup is successful, 1 otherwise
+# Input  : $CRCON_PATH (path to valid CRCON configuration)
+#          $CRCON_stopped (set to "yes" if no CRCON container is running)
+# Set    : $backup_path to the path of the backup file
+#          $backup_successful="yes" if backup is successful, ="no" otherwise
+#          $backup_file_size to the size of the backup file
+# Return : 0 if backup is successful
+#          1 otherwise
 backup_CRCON() {
     printf "\033[36m?\033[0m Creating backup of CRCON folder...\n"
     backup_successful="no"
     backup_file_size=0
-    if [ -n "$CRCON_stopped" ]; then
+    if [ "$CRCON_stopped" = "yes" ]; then
         printf "Backup process started. Please wait...\n"
-        backup_name="hll_rcon_tool_$(date '+%Y-%m-%d_%Hh%M').tar.gz"
-        backup_path="$CRCON_PATH/../$backup_name"
+        backup_path="$crcon_parent_dir/hll_rcon_tool_$(date '+%Y-%m-%d_%Hh%M').tar.gz"
 
         if $SUDO tar -zcf "$backup_path" "$CRCON_PATH" >/dev/null 2>&1; then
             backup_successful="yes"
             backup_file_size=$(numfmt --to=iec --format "%.2f" "$(stat --printf="%s" "$backup_path")")
-            printf "\033[32mV\033[0m Backup successful ! File size: $backup_file_size\n"
+            printf "└ \033[32mV\033[0m Backup successful !\n"
+            printf "  Backup file : \033[33m$backup_path\033[0m\n"
+            printf "  File size : $backup_file_size\n"
             return 0
         else
             backup_successful="no"
-            printf "\033[31mX\033[0m Backup failed.\n"
+            printf "└ \033[31mX\033[0m Backup failed.\n"
             return 1
         fi
     else
@@ -157,11 +177,12 @@ backup_CRCON() {
     fi
 }
 
-# Input : $upload_backup (set to "yes" if you want to upload the backup)
-#       : $backup_successful (set to "yes" if backup is successful)
-#       : $sftp_host, $sftp_port, $sftp_user, $sftp_dest (SFTP configuration)
-# Set $upload_successfull="yes" if upload is successful, ="no" otherwise
-# Return 0 if upload is successful, 1 otherwise
+# Input  : $upload_backup (set to "yes" if you want to upload the backup)
+#          $backup_successful (set to "yes" if backup is successful)
+#          $sftp_host, $sftp_port, $sftp_user, $sftp_dest (SFTP configuration)
+# Set    : $upload_successfull="yes" if upload is successful, ="no" otherwise
+# Return : 0 if upload is successful
+#          1 otherwise
 upload_CRCON_backup() {
     printf "\033[36m?\033[0m Uploading backup...\n"
 
@@ -200,6 +221,7 @@ upload_CRCON_backup() {
     if $SUDO scp -P "$sftp_port" "$backup_path" "$sftp_user@$sftp_host:$sftp_dest"; then
         upload_successfull="yes"
         printf "└ \033[32mV\033[0m Backup uploaded successfully\n"
+        printf "  Distant file is : \033[33m$sftp_dest/$(basename "$backup_path")\033[0m\n"
         return 0
     else
         printf "└ \033[31mX\033[0m Backup couldn't be uploaded\n"
@@ -207,20 +229,28 @@ upload_CRCON_backup() {
     fi
 }
 
-# Input : $CRCON_PATH (path to valid CRCON configuration)
+# Input  : $CRCON_PATH (path to valid CRCON configuration)
+#          $CRCON_stopped (set to "yes" if no CRCON container is running)
 restart_crcon(){
     printf "\033[36m?\033[0m Restarting CRCON Docker containers...\n"
-    local current_dir
-    current_dir=$(pwd)
-    cd "$CRCON_PATH" || exit 1
-    if $SUDO docker compose up -d --remove-orphans; then
-        printf "└ \033[32mV\033[0m CRCON restarted successfully\n"
+    if [ "$CRCON_stopped" = "yes" ]; then
+        cd "$CRCON_PATH" || exit 1
+        if $SUDO docker compose up -d --remove-orphans; then
+            printf "└ \033[32mV\033[0m CRCON restarted successfully\n"
+        else
+            printf "└ \033[31mX\033[0m CRCON couldn't be restarted\n"
+        fi
+        cd "$current_dir" || exit 1
     else
-        printf "└ \033[31mX\033[0m CRCON couldn't be restarted\n"
+        printf "└ \033[31mX\033[0m CRCON containers were not stopped. Skipping restart.\n"
     fi
-    cd "$current_dir" || exit 1
 }
 
+# Input  : $upload_successfull (set to "yes" if upload is successful)
+#          $delete_after_upload (set to "yes" if you want to delete the local backup)
+#          $delete_after_upload_dontconfirm (set to "yes" if you want to delete the local backup without confirmation)
+# Return : 0 if local backup is deleted
+#          1 otherwise
 delete_local_backup(){
     if [ "$upload_successfull" = "yes" ] && [ "$delete_after_upload" = "yes" ]; then
         if [ $delete_after_upload_dontconfirm = "yes" ]; then
@@ -252,6 +282,14 @@ delete_local_backup(){
 }
 
 # --- Start ---
+
+current_dir=$(pwd)
+
+printf "\\033c"
+
+printf "┌─────────────────────────────────────────────────────────────────────────────┐\n"
+printf "│ CRCON backup                                                                │\n"
+printf "└─────────────────────────────────────────────────────────────────────────────┘\n\n"
 
 check_privileges
 find_valid_CRCON
