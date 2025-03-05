@@ -27,6 +27,7 @@ What it does :
 ```shell
 cd /root/hll_rcon_tool
 wget https://raw.githubusercontent.com/ElGuillermo/HLL_CRCON_backup/refs/heads/main/backup.sh
+chmod +x backup.sh
 ```
 
 ## Config
@@ -35,6 +36,5 @@ wget https://raw.githubusercontent.com/ElGuillermo/HLL_CRCON_backup/refs/heads/m
 ## Use
 - Get into CRCON's folder and launch the script using these commands :
 ```shell
-cd /root/hll_rcon_tool
-sudo sh ./backup.sh
+./backup.sh
 ```
